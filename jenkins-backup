@@ -1,0 +1,28 @@
+#!/bin/bash -e
+
+USAGE="Usage: $0 JENKINS_HOME S3_TARGET\n
+\n
+Examples:\n
+$0 /var/lib/jenkins s3://mybucket/jenkins/jenkins-201405011901.tar.gz"
+
+JENKINS_HOME=$1
+S3_TARGET=$2
+if [[ -z "`echo $S3_TARGET|grep '^s3://'`" || ! -d "$JENKINS_HOME" ]]; then
+    echo -e $USAGE
+    exit 1
+fi
+
+LOCAL_BACKUP=/tmp/`basename $S3_TARGET`
+
+tar -C $JENKINS_HOME -zcf $LOCAL_BACKUP .\
+    --exclude "config-history/" \
+    --exclude "config-history/*" \
+    --exclude "jobs/*/workspace*" \
+    --exclude "jobs/*/builds/*/archive" \
+    --exclude "plugins/*/*" \
+    --exclude "plugins/*.bak" \
+    --exclude "war" \
+    --exclude "cache"
+
+aws s3 cp $LOCAL_BACKUP $S3_TARGET
+rm -f $LOCAL_BACKUP

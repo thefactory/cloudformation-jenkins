@@ -1,0 +1,38 @@
+#!/bin/bash -e
+
+USAGE="Usage: $0 S3_TARGET JENKINS_HOME\n
+\n
+Example:\n
+$0 s3://mybucket/jenkins/jenkins-201405011901.tar.gz /var/lib/jenkins\n
+\n
+If S3_TARGET is a directory, restore from the newest file. Make sure to include the trailing slash:\n
+$0 s3://mybucket/jenkins/ /var/lib/jenkins"
+
+S3_TARGET=$1
+JENKINS_HOME=$2
+if [[ -z "`echo $S3_TARGET|grep '^s3://'`" ]]; then
+    echo -e $USAGE
+    exit 1
+fi
+
+if [[ "$S3_TARGET" == */ ]]; then
+    S3_TARGET=$S3_TARGET`aws s3 ls $S3_TARGET|tail -1|awk '{print $NF}'`
+fi
+
+LOCAL_BACKUP=/tmp/`basename $S3_TARGET`
+aws s3 cp $S3_TARGET $LOCAL_BACKUP
+
+if [[ -d "$JENKINS_HOME" ]]; then
+    read -p "Delete existing $JENKINS_HOME? (y/n) " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -rf $JENKINS_HOME
+    else
+        echo "Bailing out"
+        exit 1
+    fi
+fi
+
+mkdir -p $JENKINS_HOME
+tar zxf $LOCAL_BACKUP -C $JENKINS_HOME
+rm -f $LOCAL_BACKUP
