@@ -1,7 +1,7 @@
-CloudFormation template for a [Jenkins](https://github.com/dotcloud/docker-registry) server with automatic backup and recovery.
+CloudFormation template for a [Jenkins](https://jenkins-ci.org/) server with automatic backup and recovery.
 
-Pre-requisites:
-* Route 53 hosted zone for the desired registry address (e.g., `mycompany.com` for `jenkins.mycompany.com`)
+Prerequisites:
+* Route 53 hosted zone for the desired DNS address (e.g., `mycompany.com` for `jenkins.mycompany.com`)
 
 ## Overview
 
@@ -34,7 +34,7 @@ Inbound rules are at your discretion, but you may want to include access to:
 * `80 [tcp]` - ELB HTTP port
 
 ### 5. Launch the stack
-Launch the stack via the AWS console, a script, or [aws-cli](https://github.com/awscli/aws-cli)
+Launch the stack via the AWS console, a script, or [aws-cli](https://github.com/aws/aws-cli).
 
 See `jenkins.json` for the full list of parameters, descriptions, and default values.
 
