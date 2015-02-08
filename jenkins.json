@@ -13,7 +13,7 @@
     },
     "KeyName" : {
       "Description" : "Name of an existing EC2 keypair to enable SSH access to the instances",
-      "Type" : "String"
+      "Type" : "AWS::EC2::KeyPair::KeyName"
     },
     "DnsPrefix" : {
       "Description" : "Prefix for Jenkins' DNS record (<prefix>.<zone>)",
@@ -42,15 +42,15 @@
     },
     "Subnets" : {
       "Description" : "List of VPC subnet IDs for the cluster",
-      "Type" : "CommaDelimitedList"
+      "Type" : "List<AWS::EC2::Subnet::Id>"
     },
     "VpcId" : {
       "Description" : "VPC associated with the provided subnets",
-      "Type" : "String"
+      "Type" : "List<AWS::EC2::VPC::Id>"
     },
     "AdminSecurityGroup" : {
       "Description" : "Existing security group that should be granted administrative access to Jenkins (e.g., 'sg-123456')",
-      "Type": "String"
+      "Type": "AWS::EC2::SecurityGroup::Id"
     }
   },
 
@@ -279,7 +279,7 @@
           "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
 
           "# Post-cfn work\n",
-          
+
           "# Handle case where cron doesn't detect the new /etc/cron.d file\n",
           "service cron restart\n",
 
