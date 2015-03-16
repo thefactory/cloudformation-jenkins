@@ -242,7 +242,7 @@
                 "content" : { "Fn::Join" : ["\n", [
                   "AWS_CONFIG_FILE=/etc/aws.conf",
                   "PATH=/bin:/usr/bin::/usr/local/bin",
-                  "59 0 * * root jenkins-backup /var/lib/jenkins s3://{{s3_bucket}}/{{s3_prefix}}jenkins-`date +\\%Y\\%m\\%d\\%H\\%M.tar.gz` >> /var/log/jenkins-backup.log 2>&1\n"
+                  "59 0 * * * root jenkins-backup /var/lib/jenkins s3://{{s3_bucket}}/{{s3_prefix}}/jenkins-`date +\\%Y\\%m\\%d\\%H\\%M.tar.gz` >> /var/log/jenkins-backup.log 2>&1\n"
                 ]]},
                 "context" : {
                   "s3_bucket"   : { "Ref" : "S3Bucket"},
