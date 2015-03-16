@@ -30,6 +30,21 @@
       "Type" : "String",
       "Default" : "aespinosa/jenkins"
     },
+    "RegistryAuthFile" : {
+      "Description" : "[Optional] Specify name of a file to be used as .dockercfg if accessing private registry. Retrieving from S3SecretBucket/S3SecretPrefix",
+      "Type" : "String",
+      "Default" : ""
+    },
+    "S3SecretBucket" : {
+      "Description" : "[Optional] Existing S3 bucket with credentials",
+      "Type" : "String",
+      "Default": ""
+    },
+    "S3SecretPrefix" : {
+      "Description" : "[Optional] Prefix in secret bucket with credentials for the stack",
+      "Type" : "String",
+      "Default": ""
+    },
     "S3Bucket" : {
       "Description" : "Existing S3 bucket to use for Jenkins backups and restores",
       "Type" : "String",
@@ -52,6 +67,14 @@
       "Description" : "Existing security group that should be granted administrative access to Jenkins (e.g., 'sg-123456')",
       "Type": "String"
     }
+  },
+
+  "Conditions" : {
+    "UsePrivateRegistry" : {"Fn::And": [
+      {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "S3SecretBucket"}, ""]}]},
+      {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "S3SecretPrefix"}, ""]}]},
+      {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "RegistryAuthFile"}, ""]}]}
+    ]}
   },
 
   "Mappings" : {
@@ -93,7 +116,15 @@
             "Statement": [{
               "Effect"   : "Allow",
               "Action"   : "s3:*",
-              "Resource" : { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "S3Bucket"} , "/*"]]}
+              "Resource" : [ { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "S3Bucket"} , "/" , {"Ref" : "S3Bucket"} , "/*"]]},
+              { "Fn::If" : [
+                "UsePrivateRegistry",
+                  {
+                    "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "S3SecretBucket"} , "/" , {"Ref" : "S3SecretPrefix"} , "/*"]]
+                  },
+                  {
+                    "Ref" : "AWS::NoValue"
+                  } ] } ]
             }]
           }
         },
@@ -133,6 +164,14 @@
     "LaunchConfig" : {
       "Type" : "AWS::AutoScaling::LaunchConfiguration",
       "Metadata" : {
+        "AWS::CloudFormation::Authentication" : {
+          "S3AccessCreds" : {
+            "type" : "S3",
+            "accessKeyId" : { "Ref" : "HostKeys" },
+            "secretKey" : {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},
+            "buckets" : [ { "Ref" : "S3Bucket" }, { "Ref" : "S3SecretBucket" } ]
+           }
+        },
         "AWS::CloudFormation::Init" : {
           "config": {
             "packages" : {
@@ -155,7 +194,18 @@
                 "owner"   : "root",
                 "group"   : "root"
               },
-
+              "/root/.dockercfg" : { "Fn::If" : [
+                "UsePrivateRegistry",
+                  {
+                      "source" : { "Fn::Join" : ["", ["https://", { "Ref" : "S3SecretBucket" }, ".s3.amazonaws.com/", { "Ref" : "S3SecretPrefix" }, "/", { "Ref" : "RegistryAuthFile" }]] },
+                      "mode"    : "000600",
+                      "owner"   : "root",
+                      "group"   : "root"
+                  },
+                  {
+                    "Ref" : "AWS::NoValue"
+                  } 
+              ] } ,
               "/usr/local/bin/jenkins-restore" : {
                 "content" : { "Fn::Join" : ["\n", [
                   "#!/bin/bash -e",
@@ -288,7 +338,7 @@
           "jenkins-restore s3://",{ "Ref": "S3Bucket" },"/",{ "Ref": "S3Prefix" }," /var/lib/jenkins || true # ignore errors\n",
 
           "# Start Jenkins\n",
-          "docker pull ", { "Ref": "DockerImage" }, "\n",
+          "HOME=/root docker pull ", { "Ref": "DockerImage" }, "\n",
           "runit-service create jenkins docker run",
           "   -p 8080:8080",
           "   -v /var/lib/jenkins:/jenkins",
