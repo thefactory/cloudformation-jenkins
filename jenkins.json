@@ -74,6 +74,10 @@
       {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "S3SecretBucket"}, ""]}]},
       {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "S3SecretPrefix"}, ""]}]},
       {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "RegistryAuthFile"}, ""]}]}
+    ]},
+    "CreateDnsEntry" : {"Fn::And": [
+      {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "DnsPrefix"}, ""]}]},
+      {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "DnsZone"}, ""]}]}
     ]}
   },
 
@@ -393,6 +397,7 @@
 
     "DnsRecord" : {
       "Type" : "AWS::Route53::RecordSet",
+      "Condition": "CreateDnsEntry",
       "Properties" : {
         "HostedZoneName" : { "Fn::Join" : [ "", [{"Ref" : "DnsZone"}, "." ]]},
         "Comment" : "Docker Registry",
@@ -411,9 +416,15 @@
   "Outputs" : {
     "DnsAddress" : {
       "Description" : "Jenkins URL",
-      "Value" :  { "Fn::Join" : ["", [
-        "http://", { "Ref" : "DnsRecord" }
-      ]]}
+      "Value" : { "Fn::If" : [
+        "CreateDnsEntry",
+        {
+          "Fn::Join" : ["", [
+            "http://", { "Ref" : "DnsRecord" }
+          ]]
+        },
+          "DNS disabled"
+      ] }
     }
   }
 
