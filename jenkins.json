@@ -368,6 +368,7 @@
           "runit-service create jenkins docker run",
           "   -p 8080:8080",
           "   -v /var/lib/jenkins:/jenkins",
+          "   -v /var/run/docker.sock:/var/run/docker.sock",
           "   ", { "Ref": "DockerImage" }, "|| error_exit 'Failed to launch Docker container'\n",
           "runit-service enable jenkins\n",
 
