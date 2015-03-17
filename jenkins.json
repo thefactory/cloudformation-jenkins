@@ -80,7 +80,12 @@
       "Default": "thefactory-jenkins"
     },
     "S3Prefix" : {
-      "Description" : "[Optional] Key prefix to use for Jenkins backups",
+      "Description" : "[Optional] path in s3 bucket to retrieve backup file (e.g.  jenkins-201503170417.tar.gz)",
+      "Type" : "String",
+      "Default": ""
+    },
+    "S3BackupFile" : {
+      "Description" : "[Optional] backup file to use to seed the jenkins",
       "Type" : "String",
       "Default": ""
     },
@@ -354,7 +359,8 @@
 
           "# Attempt to restore from backup\n",
           "export AWS_CONFIG_FILE=/etc/aws.conf\n",
-          "jenkins-restore s3://",{ "Ref": "S3Bucket" },"/",{ "Ref": "S3Prefix" }," /var/lib/jenkins || true # ignore errors\n",
+          "jenkins-restore s3://",{ "Ref": "S3Bucket" },"/",{ "Ref": "S3Prefix" }, "/", { "Ref" : "S3BackupFile" }, " /var/lib/jenkins || true # ignore errors\n",
+          "chown -R ubuntu /var/lib/jenkins\n",
 
           "# Start Jenkins\n",
           "HOME=/root docker pull ", { "Ref": "DockerImage" }, "\n",
