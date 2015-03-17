@@ -206,11 +206,20 @@
         "AWS::CloudFormation::Init" : {
           "config": {
             "packages" : {
+              "apt" : {
+                "runit":[]
+              },
               "python" : {
                 "awscli":[]
               }
             },
             "files" : {
+              "/tmp/runit-service" : {
+                "content" : "IyEvYmluL2Jhc2ggLWUKCiMgSGVscGVyIHNjcmlwdCBmb3IgbWFuYWdpbmcgcnVuaXQgc2VydmljZXMKCmZ1bmN0aW9uIGNyZWF0ZSgpIHsKCVVTQUdFPSIkMCBjcmVhdGUgPHNlcnZpY2VfbmFtZT4gPGNtZD4gWzxvcHRpb25zPl0iCglzZXJ2aWNlX25hbWU9JDEKCWNtZD0ke0A6Mn0KCgk6ICR7c2VydmljZV9uYW1lOj8ibXVzdCBiZSBwYXNzZWQuICRVU0FHRSJ9Cgk6ICR7Y21kOj8ibXVzdCBiZSBwYXNzZWQuICRVU0FHRSJ9CgoJc3ZkaXI9L2V0Yy9zdi8ke3NlcnZpY2VfbmFtZX0KCglzdWRvIG1rZGlyIC1wICR7c3ZkaXJ9L2VudgoJY2F0IDw8LSBFT0YgfCBzdWRvIHRlZSAke3N2ZGlyfS9ydW4gPiAvZGV2L251bGwKCQkjIS9iaW4vc2gKCQlleGVjIDI+JjEKCQlleGVjIGNocHN0IC1lICR7c3ZkaXJ9L2VudiAke2NtZH0gJHtvcHRzfQoJRU9GCglzdWRvIGNobW9kIDc3NCAke3N2ZGlyfS9ydW4KCglzdWRvIG1rZGlyIC1wIC92YXIvbG9nLyR7c2VydmljZV9uYW1lfSAke3N2ZGlyfS9sb2cKCWNhdCA8PC0gRU9GIHwgc3VkbyB0ZWUgJHtzdmRpcn0vbG9nL3J1biA+IC9kZXYvbnVsbAoJCSMhL2Jpbi9zaAoJCWV4ZWMgY2hwc3Qgc3Zsb2dkIC10dCAvdmFyL2xvZy8ke3NlcnZpY2VfbmFtZX0KCUVPRgoJc3VkbyBjaG1vZCA3NzQgJHtzdmRpcn0vbG9nL3J1bgoKCXN1ZG8gbWtkaXIgLXAgL2V0Yy9zZXJ2aWNlCgllY2hvICIke3NlcnZpY2VfbmFtZX0gY3JlYXRlZCIKfQoKZnVuY3Rpb24gZW5hYmxlKCkgewoJVVNBR0U9IiQwIGVuYWJsZSA8c2VydmljZV9uYW1lPiIKCXNlcnZpY2VfbmFtZT0kMQoKCTogJHtzZXJ2aWNlX25hbWU6PyJtdXN0IGJlIHBhc3NlZC4gJFVTQUdFIn0KCQoJc3VkbyBsbiAtZnMgL2V0Yy9zdi8ke3NlcnZpY2VfbmFtZX0gL2V0Yy9zZXJ2aWNlLwoJc3VkbyBsbiAtZnMgL3Vzci9iaW4vc3YgL2V0Yy9pbml0LmQvJHtzZXJ2aWNlX25hbWV9CgoJZWNobyAiJHtzZXJ2aWNlX25hbWV9IGVuYWJsZWQiCn0KCmZ1bmN0aW9uIGRpc2FibGUoKSB7CglVU0FHRT0iJDAgZGlzYWJsZSA8c2VydmljZV9uYW1lPiIKCXNlcnZpY2VfbmFtZT0kMQoKCTogJHtzZXJ2aWNlX25hbWU6PyJtdXN0IGJlIHBhc3NlZC4gJFVTQUdFIn0KCglzdWRvIHJtIC1mIC9ldGMvc2VydmljZS8ke3NlcnZpY2VfbmFtZX0KCXN1ZG8gcm0gLWYgL2V0Yy9pbml0LmQvJHtzZXJ2aWNlX25hbWV9CgoJZWNobyAiJHtzZXJ2aWNlX25hbWV9IGRpc2FibGVkIgp9CgpjYXNlICIkMSIgaW4KCWNyZWF0ZSkKCQlzaGlmdAoJCWNyZWF0ZSAkQAoJCTs7CgoJZW5hYmxlKQoJCXNoaWZ0CgkJZW5hYmxlICRACgkJOzsKCglkaXNhYmxlKQoJCXNoaWZ0CgkJZGlzYWJsZSAkQAoJCTs7CgoJKikKCQllY2hvICJVc2FnZTogJDAge2NyZWF0ZXxlbmFibGV8ZGlzYWJsZX0gPHNlcnZpY2VfbmFtZT4gWzxhcmdzPl0iCgkJZXhpdCAxCmVzYWM=",
+                "mode"    : "000600",
+                "owner"   : "root",
+                "group"   : "root"
+              },
               "/etc/aws.conf" : {
                 "content" : { "Fn::Join" : ["\n", [
                   "[default]",
@@ -354,12 +363,16 @@
           "  exit 1\n",
           "}\n",
 
+          "apt-get update && apt-get -y install python-setuptools\n",
+          "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
+
           "cfn-init -s ", { "Ref" : "AWS::StackName" }, " -r LaunchConfig ",
           "    --access-key ",  { "Ref" : "HostKeys" },
           "    --secret-key ", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},
           "    --region ", { "Ref" : "AWS::Region" }, " || error_exit 'Failed to run cfn-init'\n",
 
           "# Post-cfn work\n",
+          "curl -sSL https://get.docker.com/ubuntu/ | sudo sh \n",
           
           "# Handle case where cron doesn't detect the new /etc/cron.d file\n",
           "service cron restart\n",
@@ -370,6 +383,7 @@
 
           "# Start Jenkins\n",
           "HOME=/root docker pull ", { "Ref": "DockerImage" }, "\n",
+          "base64 -d /tmp/runit-service > /sbin/runit-service && chmod 755 /sbin/runit-service \n",
           "runit-service create jenkins docker run",
           "   -p 8080:8080",
           "   -v /var/lib/jenkins:/jenkins",
