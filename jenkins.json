@@ -15,6 +15,26 @@
       "Description" : "Name of an existing EC2 keypair to enable SSH access to the instances",
       "Type" : "String"
     },
+    "ElbAccessLogs" : {
+      "Description" : "Enable elb access logging (use 'true' to enable)",
+      "Type": "String",
+      "Default": "false"
+    },
+    "ElbS3BucketPrefix" : {
+      "Description" : "Prefix on S3 bucket name to store elb logs",
+      "Type": "String",
+      "Default": ""
+    },
+    "ElbS3BucketName" : {
+      "Description" : "S3 bucket name to store elb logs",
+      "Type": "String",
+      "Default": ""
+    },
+    "ElbEmitInterval" : {
+      "Description" : "Elb logs emit interval",
+      "Type": "String",
+      "Default": ""
+    },
     "DnsPrefix" : {
       "Description" : "Prefix for Jenkins' DNS record (<prefix>.<zone>)",
       "Type": "String",
@@ -24,6 +44,11 @@
       "Description" : "Route53-hosted zone to use for the DNS record (<prefix>.<zone>)",
       "Type": "String",
       "Default": "thefactory.com"
+    },
+    "ServerSslCertificate" : {
+      "Description" : "SSL certificate arn to use for ELB",
+      "Type": "String",
+      "Default": ""
     },
     "DockerImage" : {
       "Description" : "Path of the Jenkins Docker image (format: '[<registry>[:<port>]/]<repository>:<version>')",
@@ -70,6 +95,8 @@
   },
 
   "Conditions" : {
+    "ElbLogsEnable" : {"Fn::Equals" : [{ "Fn::Join" : ["", [ {"Ref" : "ElbAccessLogs"}] ]}, "false"]},
+    "UseSsl" : {"Fn::Equals" : [{ "Fn::Join" : ["", [ {"Ref" : "ServerSslCertificate"}] ]}, ""]},
     "UsePrivateRegistry" : {"Fn::And": [
       {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "S3SecretBucket"}, ""]}]},
       {"Fn::Not": [{"Fn::Equals" : [{"Ref" : "S3SecretPrefix"}, ""]}]},
@@ -378,12 +405,34 @@
     "ElasticLoadBalancer" : {
       "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
       "Properties" : {
+        "AccessLoggingPolicy" : { "Fn::If" : [
+          "ElbLogsEnable",
+          {
+            "Enabled" : { "Ref" : "ElbAccessLogs" }
+          },
+          {
+            "EmitInterval" : { "Ref" : "ElbEmitInterval" },
+            "Enabled" : { "Ref" : "ElbAccessLogs" },
+            "S3BucketName" : { "Ref" : "ElbS3BucketName" },
+            "S3BucketPrefix" : { "Ref" : "ElbS3BucketPrefix" }
+          }
+        ] },
         "SecurityGroups": [{ "Ref": "LbSecurityGroup" }, { "Ref": "AdminSecurityGroup" }],
         "Subnets": { "Ref": "Subnets" },
         "Listeners" : [ {
-          "LoadBalancerPort" : "80",
-          "InstancePort" : "8080",
-          "Protocol" : "HTTP"
+          "Fn::If" : [
+            "UseSsl",
+              {
+                "LoadBalancerPort" : "80",
+                "InstancePort" : "8080",
+                "Protocol" : "HTTP"
+              },
+              {
+                "LoadBalancerPort" : "443",
+                "SSLCertificateId" : { "Ref" : "ServerSslCertificate" },
+                "InstancePort" : "8080",
+                "Protocol" : "HTTPS"
+              } ]
         } ],
         "HealthCheck" : {
           "Target" : "HTTP:8080/",
