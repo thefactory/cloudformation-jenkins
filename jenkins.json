@@ -97,6 +97,11 @@
       "Description" : "VPC associated with the provided subnets",
       "Type" : "String"
     },
+    "EbsRootSize" : {
+      "Description" : "Size of the root disk device in GB",
+      "Type" : "String",
+      "Default": "50"
+    },
     "AdminSecurityGroup" : {
       "Description" : "Existing security group that should be granted administrative access to Jenkins (e.g., 'sg-123456')",
       "Type": "String"
@@ -332,6 +337,12 @@
         "ImageId" : { "Ref" : "AMI" },
         "SecurityGroups" : [ { "Ref" : "ServerSecurityGroup" }, { "Ref": "AdminSecurityGroup" } ],
         "AssociatePublicIpAddress": "true",
+        "BlockDeviceMappings" : [
+           {
+             "DeviceName" : "/dev/sda1",
+             "Ebs" : { "VolumeSize" : { "Ref" : "EbsRootSize" } } 
+           }
+        ],
         "InstanceType" : { "Ref" : "InstanceType" },
         "UserData"       : { "Fn::Base64" : { "Fn::Join" : ["", [
           "#!/bin/bash -ex\n",
