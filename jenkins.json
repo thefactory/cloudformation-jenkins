@@ -25,17 +25,17 @@
       "Default": "false"
     },
     "ElbS3BucketPrefix" : {
-      "Description" : "Prefix on S3 bucket name to store elb logs",
+      "Description" : "Prefix on S3 bucket name to store elb logs (<ElbS3BucketName>/<ElbS3BucketPrefix>)",
       "Type": "String",
       "Default": ""
     },
     "ElbS3BucketName" : {
-      "Description" : "S3 bucket name to store elb logs",
+      "Description" : "S3 bucket name to store elb logs (<ElbS3BucketName>/<ElbS3BucketPrefix>)",
       "Type": "String",
       "Default": ""
     },
     "ElbEmitInterval" : {
-      "Description" : "Elb logs emit interval",
+      "Description" : "Elb logs emit interval usually 60",
       "Type": "String",
       "Default": ""
     },
@@ -60,32 +60,32 @@
       "Default" : "aespinosa/jenkins"
     },
     "RegistryAuthFile" : {
-      "Description" : "[Optional] Specify name of a file to be used as .dockercfg if accessing private registry. Retrieving from S3SecretBucket/S3SecretPrefix",
+      "Description" : "[Optional] Specify name of a file to be used as .dockercfg if accessing private registry. Retrieving from (<S3SecretBucket>/<S3SecretPrefix>/<RegistryAuthFile>)",
       "Type" : "String",
       "Default" : ""
     },
     "S3SecretBucket" : {
-      "Description" : "[Optional] Existing S3 bucket with credentials",
+      "Description" : "[Optional] Existing S3 bucket with credentials (<S3SecretBucket>/<S3SecretPrefix>)",
       "Type" : "String",
       "Default": ""
     },
     "S3SecretPrefix" : {
-      "Description" : "[Optional] Prefix in secret bucket with credentials for the stack",
+      "Description" : "[Optional] Prefix in secret bucket with credentials for the stack (<S3SecretBucket>/<S3SecretPrefix>)",
       "Type" : "String",
       "Default": ""
     },
     "S3Bucket" : {
-      "Description" : "Existing S3 bucket to use for Jenkins backups and restores",
+      "Description" : "Existing S3 bucket to use for Jenkins backups and restores (<S3Bucket>/<S3Prefix>/<S3BackupFile>)",
       "Type" : "String",
       "Default": "thefactory-jenkins"
     },
     "S3Prefix" : {
-      "Description" : "[Optional] path in s3 bucket to retrieve backup file (e.g.  jenkins-201503170417.tar.gz)",
+      "Description" : "[Optional] path in s3 bucket to retrieve backup file (<S3Bucket>/<S3Prefix>/<S3BackupFile>)",
       "Type" : "String",
       "Default": ""
     },
     "S3BackupFile" : {
-      "Description" : "[Optional] backup file to use to seed the jenkins",
+      "Description" : "[Optional] backup file to use to seed the jenkins (<S3Bucket>/<S3Prefix>/<S3BackupFile>)",
       "Type" : "String",
       "Default": ""
     },
@@ -126,24 +126,7 @@
     "IAMUser" : {
       "Type" : "AWS::IAM::User",
       "Properties" : {
-        "Policies" : [{
-          "PolicyName" : "S3Access",
-          "PolicyDocument" : {
-            "Statement": [{
-              "Effect"   : "Allow",
-              "Action"   : "s3:*",
-              "Resource" : [ { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "S3Bucket"} , "/" , {"Ref" : "S3Bucket"} , "/*"]]},
-              { "Fn::If" : [
-                "UsePrivateRegistry",
-                  {
-                    "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "S3SecretBucket"} , "/" , {"Ref" : "S3SecretPrefix"} , "/*"]]
-                  },
-                  {
-                    "Ref" : "AWS::NoValue"
-                  } ] } ]
-            }]
-          }
-        },
+        "Policies" : [
         {
           "PolicyName" : "IAMAccess",
           "PolicyDocument" : {
@@ -153,7 +136,34 @@
               "Resource"  : "*"
             }]
           }
-        }]
+        },{
+          "PolicyName" : "Cleanup",
+          "PolicyDocument" : {
+            "Statement" : [{
+              "Effect"    : "Allow",
+              "Action" : "iam:DeleteAccessKey",
+              "Resource"  : "*"
+            }]
+          }
+        } ]
+      }
+    },
+
+    "RestrictedUser" : {
+      "Type" : "AWS::IAM::User",
+      "Properties" : {
+        "Policies" : [{
+          "PolicyName" : "S3Access",
+          "PolicyDocument" : {
+            "Statement": [{
+              "Effect"   : "Allow",
+              "Action"   : "s3:*",
+              "Resource" : [ { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "S3Bucket"} , "/" , {"Ref" : "S3Prefix"} , "/*"]]}
+               ]
+            }]
+          }
+        }
+        ]
       }
     },
 
@@ -161,6 +171,13 @@
       "Type" : "AWS::IAM::AccessKey",
       "Properties" : {
         "UserName" : { "Ref" : "IAMUser" }
+      }
+    },
+
+    "RestrictedKeys" : {
+      "Type" : "AWS::IAM::AccessKey",
+      "Properties" : {
+        "UserName" : { "Ref" : "RestrictedUser" }
       }
     },
 
@@ -212,8 +229,8 @@
                   "aws_secret_access_key={{secret_key}}"
                 ]]},
                 "context" : {
-                  "access_key"  : { "Ref" : "HostKeys" },
-                  "secret_key"  : { "Fn::GetAtt" : ["HostKeys", "SecretAccessKey"]}
+                  "access_key"  : { "Ref" : "RestrictedKeys" },
+                  "secret_key"  : { "Fn::GetAtt" : ["RestrictedKeys", "SecretAccessKey"]}
                 },
                 "mode"    : "000700",
                 "owner"   : "root",
@@ -385,6 +402,13 @@
 
           "# All is well, signal success\n",
           "cfn-signal -e 0 -r \"Stack setup complete\" '", { "Ref" : "WaitHandle" }, "'\n",
+
+          "# Disable allmighty key\n",
+          "unset AWS_CONFIG_FILE\n",
+          "export AWS_ACCESS_KEY_ID=",     { "Ref" : "HostKeys" },"\n",
+          "export AWS_SECRET_ACCESS_KEY=", {"Fn::GetAtt": ["HostKeys", "SecretAccessKey"]},"\n",
+
+          "aws iam delete-access-key --access-key ",  { "Ref" : "HostKeys" },"\n",
 
           "#EOF"
         ]]}}
