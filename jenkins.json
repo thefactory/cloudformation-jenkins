@@ -46,7 +46,7 @@
     },
     "VpcId" : {
       "Description" : "VPC associated with the provided subnets",
-      "Type" : "List<AWS::EC2::VPC::Id>"
+      "Type" : "AWS::EC2::VPC::Id"
     },
     "AdminSecurityGroup" : {
       "Description" : "Existing security group that should be granted administrative access to Jenkins (e.g., 'sg-123456')",
