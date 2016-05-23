@@ -360,6 +360,16 @@
 
     "WaitHandle" : {
       "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "ServerGroupWaitCondition": {
+      "DependsOn": "ServerGroup",
+      "Properties": {
+        "Handle": {
+          "Ref": "WaitHandle"
+        },
+        "Timeout": "4500"
+      },
+      "Type": "AWS::CloudFormation::WaitCondition"
     }
   },
 
